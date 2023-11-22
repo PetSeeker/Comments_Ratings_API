@@ -97,13 +97,11 @@ async def delete_rating(rating_id: UUID):
                 DELETE FROM Ratings WHERE rating_id = %s;
             """
             cursor.execute(delete_query, (str(rating_id),))
-            deleted_id = cursor.fetchone()
+     
+            connection.commit()
 
-            if deleted_id:
-                connection.commit()
-                return {"message": "Rating deleted successfully", "rating_id": deleted_id[0]}
-            else:
-                return HTTPException(status_code=404, detail="Rating not found")
+            return {"message": "Rating deleted successfully"}
+
     except Exception as e:
         connection.rollback()
         logger.error(f"Error deleting rating: {e}")
@@ -122,18 +120,15 @@ async def update_rating(
             if not 1 <= rating <= 5:
                 return HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
 
-          
             update_query = """
-                UPDATE Ratings SET Rating = %s WHERE rating_ id = %s;
+                UPDATE Ratings SET Rating = %s WHERE rating_id = %s;
             """
             cursor.execute(update_query, (rating, str(rating_id)))
-            updated_id = cursor.fetchone()
+            
+            connection.commit()
+            
+            return {"message": "Rating updated successfully"}
 
-            if updated_id:
-                connection.commit()
-                return {"message": "Rating updated successfully", "rating_id": updated_id[0]}
-            else:
-                return HTTPException(status_code=404, detail="Rating not found")
     except Exception as e:
         connection.rollback()
         logger.error(f"Error updating rating: {e}")
