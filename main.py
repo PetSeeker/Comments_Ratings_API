@@ -94,7 +94,7 @@ async def delete_rating(rating_id: UUID):
         with connection.cursor() as cursor:
             
             delete_query = """
-                DELETE FROM Ratings WHERE id = %s RETURNING ID;
+                DELETE FROM Ratings WHERE rating_id = %s;
             """
             cursor.execute(delete_query, (str(rating_id),))
             deleted_id = cursor.fetchone()
@@ -110,22 +110,21 @@ async def delete_rating(rating_id: UUID):
         return HTTPException(status_code=500, detail="Internal Server Error")
     
 
-
 @app.put("/ratings/{rating_id}")
 async def update_rating(
     rating_id: UUID, 
-    rating: int
+    rating: int = Form(...)
 ):
     global connection
     try:
         with connection.cursor() as cursor:
-            # Verifica se a nova avaliação está no intervalo permitido
+      
             if not 1 <= rating <= 5:
                 return HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
 
-            # Atualiza a avaliação no banco de dados
+          
             update_query = """
-                UPDATE Ratings SET Rating = %s WHERE id = %s RETURNING ID;
+                UPDATE Ratings SET Rating = %s WHERE rating_ id = %s;
             """
             cursor.execute(update_query, (rating, str(rating_id)))
             updated_id = cursor.fetchone()
