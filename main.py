@@ -1,8 +1,8 @@
 from uuid import UUID
 import psycopg2, os, logging
-from fastapi import FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-
+from dotenv import load_dotenv
 
 app = FastAPI(debug=True)
 
@@ -19,11 +19,14 @@ logger = logging.getLogger(os.name)
 
 connection = None
 
-DB_USER = "docker"
-DB_PASSWORD = "docker"
-DB_HOST = "database"
-DB_PORT = "5432"
-DB_DATABASE = "exampledb"
+
+load_dotenv()
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_DATABASE = os.getenv("DB_DATABASE")
 
 app = FastAPI()
 
@@ -138,37 +141,60 @@ async def update_rating(
         return HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/ratings/{user_email}")
-async def get_user_ratings(user_email: str):
+async def get_user_ratings(user_email: str, rater_email: str = Query(None)):
     global connection
     try:
         with connection.cursor() as cursor:
             
-            average_query = """
-                SELECT AVG(Rating) FROM Ratings WHERE user_email = %s;
-            """
-            cursor.execute(average_query, (user_email,))
-            average_rating = cursor.fetchone()[0]
+            if rater_email:
+                query = """
+                    SELECT Rating FROM Ratings WHERE user_email = %s AND rater_email = %s;
+                """
+                cursor.execute(query, (user_email, rater_email))
+                result = cursor.fetchone()
 
-            count_query = """
-                SELECT COUNT(*) FROM Ratings WHERE user_email = %s;
-            """
-            cursor.execute(count_query, (user_email,))
-            ratings_count = cursor.fetchone()[0]
+                if result:
+                    rating = result[0]
+                    return {"rating": rating}
+                else:
+                    return HTTPException(status_code=404, detail="Rating not found")
+            else:
+                query = """
+                    SELECT 
+                        AVG(Rating) as average_rating, 
+                        COUNT(*) as ratings_count, 
+                        STRING_AGG(DISTINCT CONCAT(rater_email, ':', Rating), ',') as raters,
+                        COUNT(CASE WHEN Rating = 1 THEN 1 ELSE NULL END) as count_1_star,
+                        COUNT(CASE WHEN Rating = 2 THEN 1 ELSE NULL END) as count_2_stars,
+                        COUNT(CASE WHEN Rating = 3 THEN 1 ELSE NULL END) as count_3_stars,
+                        COUNT(CASE WHEN Rating = 4 THEN 1 ELSE NULL END) as count_4_stars,
+                        COUNT(CASE WHEN Rating = 5 THEN 1 ELSE NULL END) as count_5_stars
+                    FROM Ratings 
+                    WHERE user_email = %s;
+                """
+                cursor.execute(query, (user_email,))
+                result_set = cursor.fetchone()
 
-            raters_query = """
-                SELECT DISTINCT rater_email FROM Ratings WHERE user_email = %s;
-            """
-            cursor.execute(raters_query, (user_email,))
-            raters = cursor.fetchall()
+                if result_set:
+            
+                    average_rating = result_set[0]  
+                    ratings_count = result_set[1]   
+                    raters_str = result_set[2]      
 
-            result = {
-                "user_id": user_email,
-                "average_rating": float(average_rating) if average_rating is not None else None,
-                "ratings_count": ratings_count,
-                "raters": [rater[0] for rater in raters]
-            }
-            return result
+                    raters = [{item.split(':')[0]: int(item.split(':')[1])} for item in raters_str.split(',')]
 
+                    star_counts = [result_set[i + 3] for i in range(5)]
+
+                    return {
+                        "user_id": user_email,
+                        "average_rating": float(average_rating) if average_rating is not None else None,
+                        "ratings_count": ratings_count,
+                        "raters": raters,
+                        "star_counts": star_counts
+                    }
+                else:
+                    return HTTPException(status_code=404, detail="User not found")
+            
     except Exception as e:
         logger.error(f"Error retrieving user ratings information: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
