@@ -52,7 +52,6 @@ def connect_db():
         return False
     
 
-
 @app.get("/health/")
 async def health():
     return HTTPException(status_code=200, detail="Server is healthy")
@@ -60,23 +59,24 @@ async def health():
 
 @app.post("/ratings/")
 async def create_rating(
-    user_id: str = Form(...), 
-    rater_id: str = Form(...), 
+    user_email: str = Form(...), 
+    rater_email: str = Form(...), 
     rating: int = Form(...)
 ):
     global connection
     try:
         with connection.cursor() as cursor:
-            if not 1 <= rating <=5:
+            if not 1 <= rating <= 5:
                 return HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
 
 
-            rating_id = insert_rating_data(cursor, user_id, rater_id, rating)
+            insert_query = """
+                INSERT INTO Ratings (user_email, rater_email, rating) VALUES (%s, %s, %s);
+            """
+            cursor.execute(insert_query, (user_email, rater_email, rating))
             connection.commit()
 
-
-
-            return {"message": "Rating created successfully", "rating_id": rating_id}
+            return {"message": "Rating created successfully"}
         
     except Exception as e:
         connection.rollback()
@@ -84,27 +84,6 @@ async def create_rating(
         return HTTPException(status_code=500, detail="Internal Server Error")
     
     
-@app.get("/user/{user_id}/average_rating")
-async def get_user_average_rating(user_id: str):
-    global connection
-    try:
-        with connection.cursor() as cursor:
-            query = """
-                SELECT AVG(Rating) FROM Ratings WHERE UserID = %s;
-            """
-            cursor.execute(query, [user_id])
-            average_rating = cursor.fetchone()[0]
-
-            if average_rating is not None:
-                return {"user_id": user_id, "average_rating": float(average_rating)}
-            else:
-                return HTTPException(status_code=404, detail="User not found or no ratings available")
-    except Exception as e:
-        logger.error(f"Error retrieving user average rating: {e}")
-        return HTTPException(status_code=500, detail="Internal Server Error")
-
-    
-
 @app.delete("/ratings/{rating_id}")
 async def delete_rating(rating_id: UUID):
     global connection
@@ -158,23 +137,64 @@ async def update_rating(
         logger.error(f"Error updating rating: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
 
+@app.get("/ratings/{user_email}")
+async def get_user_ratings(user_email: str):
+    global connection
+    try:
+        with connection.cursor() as cursor:
+            
+            average_query = """
+                SELECT AVG(Rating) FROM Ratings WHERE user_email = %s;
+            """
+            cursor.execute(average_query, (user_email,))
+            average_rating = cursor.fetchone()[0]
 
-@app.get("/user/{user_id}/ratings/count")
-async def get_user_ratings_count(user_id: str):
+            count_query = """
+                SELECT COUNT(*) FROM Ratings WHERE user_email = %s;
+            """
+            cursor.execute(count_query, (user_email,))
+            ratings_count = cursor.fetchone()[0]
+
+            raters_query = """
+                SELECT DISTINCT rater_email FROM Ratings WHERE user_email = %s;
+            """
+            cursor.execute(raters_query, (user_email,))
+            raters = cursor.fetchall()
+
+            result = {
+                "user_id": user_email,
+                "average_rating": float(average_rating) if average_rating is not None else None,
+                "ratings_count": ratings_count,
+                "raters": [rater[0] for rater in raters]
+            }
+            return result
+
+    except Exception as e:
+        logger.error(f"Error retrieving user ratings information: {e}")
+        return HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@app.get("/ratings/")
+async def get_rating_id(user_email: str, rater_email: str):
     global connection
     try:
         with connection.cursor() as cursor:
             query = """
-                SELECT COUNT(*) FROM Ratings WHERE UserID = %s;
+                SELECT rating_id FROM ratings WHERE user_email = %s AND rater_email = %s;
             """
-            cursor.execute(query, (user_id,))
-            count = cursor.fetchone()[0]
+            cursor.execute(query, (user_email, rater_email))
+            result = cursor.fetchone()
 
-            return {"user_id": user_id, "ratings_count": count}
+            if result:
+                rating_id = result[0]
+                return {"rating_id": rating_id}
+            else:
+                return HTTPException(status_code=404, detail="Rating not found")
+
     except Exception as e:
-        logger.error(f"Error retrieving user ratings count: {e}")
+        logger.error(f"Error retrieving rating ID: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
-
+    
 def create_tables():
     try:
         global connection,cursor
@@ -183,9 +203,9 @@ def create_tables():
         create_ratings_table = """
             CREATE TABLE IF NOT EXISTS Ratings (
                 rating_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-	            Rating INT NOT NULL CHECK (Rating BETWEEN 1 AND 5),
+	            rating INT NOT NULL CHECK (Rating BETWEEN 1 AND 5),
                 user_email VARCHAR NOT NULL,
-                rater_rmail VARCHAR NOT NULL
+                rater_email VARCHAR NOT NULL
             );
         """
 
@@ -196,13 +216,3 @@ def create_tables():
     except (Exception, psycopg2.DatabaseError) as error:
         logger.error(f"Error creating tables: {error}")
 
-
-
-
-def insert_rating_data(cursor, user_id, rater_id, rating):
-    insert_query = """
-        INSERT INTO Ratings (UserID, RaterID, Rating) VALUES (%s, %s, %s) RETURNING ID;
-    """
-    cursor.execute(insert_query, (user_id, rater_id, rating))
-    rating_id = cursor.fetchone()[0]
-    return rating_id
