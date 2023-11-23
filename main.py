@@ -86,6 +86,26 @@ async def create_rating(
         logger.error(f"Error creating rating: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
     
+@app.get("/ratings/")
+async def get_rating_id(user_email: str, rater_email: str):
+    global connection
+    try:
+        with connection.cursor() as cursor:
+            query = """
+                SELECT rating_id FROM ratings WHERE user_email = %s AND rater_email = %s;
+            """
+            cursor.execute(query, (user_email, rater_email))
+            result = cursor.fetchone()
+
+            if result:
+                rating_id = result[0]
+                return {"rating_id": rating_id}
+            else:
+                return HTTPException(status_code=404, detail="Rating not found")
+
+    except Exception as e:
+        logger.error(f"Error retrieving rating ID: {e}")
+        return HTTPException(status_code=500, detail="Internal Server Error")
     
 @app.delete("/ratings/{rating_id}")
 async def delete_rating(rating_id: UUID):
@@ -133,86 +153,73 @@ async def update_rating(
         connection.rollback()
         logger.error(f"Error updating rating: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
+    
+@app.get("/ratings/{rating_id}")
+async def get_rating(
+    rating_id: UUID
+):
+    global connection
+    try:
+        with connection.cursor() as cursor:
+    
+            query = """
+                SELECT rating WHERE rating_id = %s;
+            """
+            cursor.execute(query, (str(rating_id)))
 
-@app.get("/ratings/{user_email}")
-async def get_user_ratings(user_email: str, rater_email: str = Query(None)):
+            rating = cursor.fetchone()[0]
+
+            return {"Rating retrieved successfully": rating}
+
+    except Exception as e:
+        connection.rollback()
+        logger.error(f"Error updating rating: {e}")
+        return HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.get("/ratings/user/{user_email}")
+async def get_user_ratings(user_email: str):
     global connection
     try:
         with connection.cursor() as cursor:
             
-            if rater_email:
-                query = """
-                    SELECT Rating FROM Ratings WHERE user_email = %s AND rater_email = %s;
-                """
-                cursor.execute(query, (user_email, rater_email))
-                result = cursor.fetchone()
+            query = """
+                SELECT 
+                    AVG(rating) as average_rating, 
+                    COUNT(*) as ratings_count, 
+                    STRING_AGG(DISTINCT CONCAT(rater_email, ':', Rating), ',') as raters,
+                    COUNT(CASE WHEN rating = 1 THEN 1 ELSE NULL END) as count_1_star,
+                    COUNT(CASE WHEN rating = 2 THEN 1 ELSE NULL END) as count_2_stars,
+                    COUNT(CASE WHEN rating = 3 THEN 1 ELSE NULL END) as count_3_stars,
+                    COUNT(CASE WHEN rating = 4 THEN 1 ELSE NULL END) as count_4_stars,
+                    COUNT(CASE WHEN rating = 5 THEN 1 ELSE NULL END) as count_5_stars
+                FROM ratings 
+                WHERE user_email = %s;
+            """
+            cursor.execute(query, (user_email,))
+            result_set = cursor.fetchone()
 
-                if result:
-                    rating = result[0]
-                    return {"rating": rating}
-                else:
-                    return HTTPException(status_code=404, detail="Rating not found")
+            if result_set:
+        
+                average_rating = result_set[0]  
+                ratings_count = result_set[1]   
+                raters_str = result_set[2]      
+
+                raters = [{item.split(':')[0]: int(item.split(':')[1])} for item in raters_str.split(',')] if raters_str else []
+
+                star_percentages = [round(result_set[i + 3] / ratings_count * 100) if ratings_count != 0 else 0 for i in range(5)]
+
+                return {
+                    "user_id": user_email,
+                    "average_rating": float(average_rating) if average_rating is not None else None,
+                    "ratings_count": ratings_count,
+                    "raters": raters,
+                    "star_percentages": star_percentages
+                }
             else:
-                query = """
-                    SELECT 
-                        AVG(Rating) as average_rating, 
-                        COUNT(*) as ratings_count, 
-                        STRING_AGG(DISTINCT CONCAT(rater_email, ':', Rating), ',') as raters,
-                        COUNT(CASE WHEN Rating = 1 THEN 1 ELSE NULL END) as count_1_star,
-                        COUNT(CASE WHEN Rating = 2 THEN 1 ELSE NULL END) as count_2_stars,
-                        COUNT(CASE WHEN Rating = 3 THEN 1 ELSE NULL END) as count_3_stars,
-                        COUNT(CASE WHEN Rating = 4 THEN 1 ELSE NULL END) as count_4_stars,
-                        COUNT(CASE WHEN Rating = 5 THEN 1 ELSE NULL END) as count_5_stars
-                    FROM Ratings 
-                    WHERE user_email = %s;
-                """
-                cursor.execute(query, (user_email,))
-                result_set = cursor.fetchone()
-
-                if result_set:
-            
-                    average_rating = result_set[0]  
-                    ratings_count = result_set[1]   
-                    raters_str = result_set[2]      
-
-                    raters = [{item.split(':')[0]: int(item.split(':')[1])} for item in raters_str.split(',')]
-
-                    star_counts = [result_set[i + 3] for i in range(5)]
-
-                    return {
-                        "user_id": user_email,
-                        "average_rating": float(average_rating) if average_rating is not None else None,
-                        "ratings_count": ratings_count,
-                        "raters": raters,
-                        "star_counts": star_counts
-                    }
-                else:
-                    return HTTPException(status_code=404, detail="User not found")
+                return HTTPException(status_code=404, detail="User not found")
             
     except Exception as e:
         logger.error(f"Error retrieving user ratings information: {e}")
-        return HTTPException(status_code=500, detail="Internal Server Error")
-
-
-@app.get("/ratings/")
-async def get_rating_id(user_email: str, rater_email: str):
-    global connection
-    try:
-        with connection.cursor() as cursor:
-            query = """
-                SELECT rating_id FROM ratings WHERE user_email = %s AND rater_email = %s;
-            """
-            cursor.execute(query, (user_email, rater_email))
-            result = cursor.fetchone()
-
-            if result:
-                rating_id = result[0]
-                return {"rating_id": rating_id}
-            else:
-                return HTTPException(status_code=404, detail="Rating not found")
-
-    except Exception as e:
-        logger.error(f"Error retrieving rating ID: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
     
 def create_tables():
