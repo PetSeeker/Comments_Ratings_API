@@ -59,7 +59,6 @@ def connect_db():
 async def health():
     return HTTPException(status_code=200, detail="Server is healthy")
 
-
 @app.post("/ratings/")
 async def create_rating(
     user_email: str = Form(...), 
@@ -69,9 +68,18 @@ async def create_rating(
     global connection
     try:
         with connection.cursor() as cursor:
+            
             if not 1 <= rating <= 5:
                 return HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
 
+            check_query = """
+                SELECT * FROM ratings WHERE user_email = %s AND rater_email = %s;
+            """
+            cursor.execute(check_query, (user_email, rater_email))
+            existing_rating = cursor.fetchone()
+
+            if existing_rating:
+                return HTTPException(status_code=400, detail="Rating for the same user already exists.")
 
             insert_query = """
                 INSERT INTO Ratings (user_email, rater_email, rating) VALUES (%s, %s, %s);
@@ -155,17 +163,14 @@ async def update_rating(
         return HTTPException(status_code=500, detail="Internal Server Error")
     
 @app.get("/ratings/{rating_id}")
-async def get_rating(
-    rating_id: UUID
-):
+async def get_rating(rating_id: UUID):
     global connection
     try:
         with connection.cursor() as cursor:
-    
             query = """
-                SELECT rating WHERE rating_id = %s;
+                SELECT rating FROM ratings WHERE rating_id = %s;
             """
-            cursor.execute(query, (str(rating_id)))
+            cursor.execute(query, (str(rating_id),))
 
             rating = cursor.fetchone()[0]
 
@@ -173,7 +178,7 @@ async def get_rating(
 
     except Exception as e:
         connection.rollback()
-        logger.error(f"Error updating rating: {e}")
+        logger.error(f"Error retrieving rating: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/ratings/user/{user_email}")
