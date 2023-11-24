@@ -109,7 +109,7 @@ async def get_rating_id(user_email: str, rater_email: str):
                 rating_id = result[0]
                 return {"rating_id": rating_id}
             else:
-                return HTTPException(status_code=404, detail="Rating not found")
+                return {"rating_id": None}
 
     except Exception as e:
         logger.error(f"Error retrieving rating ID: {e}")
