@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: docker
       POSTGRES_DB: exampledb
     volumes:
-      - db-ratings-service:/var/lib/postgresql/data
+      - db-comments-ratings-service:/var/lib/postgresql/data
   adminer:
     image: adminer
     restart: always
@@ -30,4 +30,4 @@ services:
       - .:/app
 
 volumes:
-  db-ratings-service:
+  db-comments-ratings-service:
