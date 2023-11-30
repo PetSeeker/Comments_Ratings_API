@@ -229,10 +229,8 @@ async def get_user_ratings(user_email: str):
         logger.error(f"Error retrieving user ratings information: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
     
-
-
 #Comments
-@app.post("/api/comments/")
+@app.post("/comments/")
 async def create_comment(comment: str = Form(...), user_id: str = Form(...), commenter_id: str = Form(...), listing_id: str = Form(...)):
     global connection
     try:
@@ -249,9 +247,7 @@ async def create_comment(comment: str = Form(...), user_id: str = Form(...), com
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
     
-
-
-@app.get("/api/comments/{listing_id}")
+@app.get("/comments/{listing_id}")
 async def get_comments(listing_id: str):
     global connection
     try:
@@ -274,9 +270,7 @@ async def get_comments(listing_id: str):
     except Exception as e:
         return HTTPException(status_code=500, detail=str(e))
     
-
-
-@app.put("/api/comments/{comment_id}")
+@app.put("/comments/{comment_id}")
 async def update_comment(comment_id: str, new_comment: str = Form(...)):
     global connection
     try:
@@ -291,9 +285,7 @@ async def update_comment(comment_id: str, new_comment: str = Form(...)):
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
-
-
-@app.delete("/api/comments/{comment_id}")
+@app.delete("/comments/{comment_id}")
 async def delete_comment(comment_id: str):
     global connection
     try:
@@ -308,10 +300,8 @@ async def delete_comment(comment_id: str):
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
-
-
 #Replies
-@app.get("/api/comments/{comment_id}/replies")
+@app.get("/comments/{comment_id}/replies")
 async def get_replies(comment_id: str):
     global connection
     try:
@@ -334,8 +324,7 @@ async def get_replies(comment_id: str):
     except Exception as e:
         return HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/api/comments/{comment_id}/replies")
+@app.post("/comments/{comment_id}/replies")
 async def add_reply(comment_id: str, user_id: str = Form(...), reply: str = Form(...)):
     global connection
     try:
@@ -352,8 +341,7 @@ async def add_reply(comment_id: str, user_id: str = Form(...), reply: str = Form
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
-
-@app.put("/api/comments/{comment_id}/replies/{reply_id}")
+@app.put("/comments/{comment_id}/replies/{reply_id}")
 async def update_reply(comment_id: str, reply_id: str, new_reply: str = Form(...)):
     global connection
     try:
@@ -369,7 +357,7 @@ async def update_reply(comment_id: str, reply_id: str, new_reply: str = Form(...
         return HTTPException(status_code=500, detail=str(e))
     
 
-@app.delete("/api/comments/{comment_id}/replies/{reply_id}")
+@app.delete("/comments/{comment_id}/replies/{reply_id}")
 async def delete_reply(comment_id: str, reply_id: str):
     global connection
     try:
