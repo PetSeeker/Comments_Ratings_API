@@ -7,8 +7,8 @@ on:
       - main
       
 env:
-  ECR_REGISTRY_ALIAS: l0z7y8f5
-  ECR_REPOSITORY: ratings_comments-api	
+  ECR_REGISTRY_ALIAS: l6y6f3c9
+  ECR_REPOSITORY: ratings-man-repo	
   AWS_REGION: eu-north-1                                            # set this to your preferred AWS region, e.g. us-west-1
   # ECS_SERVICE: rc-service                                           # set this to your Amazon ECS service name
   # ECS_CLUSTER: ratings-comments-cluster                             # set this to your Amazon ECS cluster name
