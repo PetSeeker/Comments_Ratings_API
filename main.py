@@ -231,7 +231,7 @@ async def get_user_ratings(user_email: str):
     
 #Comments
 @app.post("/comments/")
-async def create_comment(comment: str = Form(...), user_id: str = Form(...), commenter_id: str = Form(...), listing_id: str = Form(...)):
+async def create_comment(comment: str = Form(...), user_email: str = Form(...), commenter_email: str = Form(...), listing_id: str = Form(...)):
     global connection
     try:
         with connection.cursor() as cursor:
