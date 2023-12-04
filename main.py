@@ -169,18 +169,43 @@ async def get_rating(rating_id: UUID):
     global connection
     try:
         with connection.cursor() as cursor:
-            query = """
-                SELECT rating FROM ratings WHERE rating_id = %s;
-            """
+            query = "SELECT rating FROM ratings WHERE rating_id = %s;"
             cursor.execute(query, (str(rating_id),))
 
-            rating = cursor.fetchone()[0]
+            result = cursor.fetchone()
 
-            return {"Rating retrieved successfully": rating}
+            if result is None:
+                return HTTPException(status_code=404, detail="Rating not found")
+  
+            else:
+                rating = result[0]
+                return {"rating": rating}
 
     except Exception as e:
         connection.rollback()
-        logger.error(f"Error retrieving rating: {e}")
+        logger.error(f"Error retrieving rating: {str(e)}")
+        return HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.get("/ratings/user/")
+async def get_ratings_order_by_user():
+    global connection
+    try:
+        with connection.cursor() as cursor:
+            query = """
+                    SELECT user_email, AVG(rating) as avg_rating
+                        FROM Ratings
+                        GROUP BY user_email
+                        ORDER BY avg_rating DESC;
+                """
+            cursor.execute(query)
+            result_set = cursor.fetchall()
+            
+            users_ordered_by_rating = [row[0] for row in result_set]
+
+            return {"users_ordered_by_rating": users_ordered_by_rating}
+        
+    except Exception as e:
+        logger.error(f"Error retrieving ratings: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/ratings/user/{user_email}")
@@ -231,7 +256,7 @@ async def get_user_ratings(user_email: str):
     
 #Comments
 @app.post("/comments/")
-async def create_comment(comment: str = Form(...), user_email: str = Form(...), commenter_email: str = Form(...), listing_id: str = Form(...)):
+async def create_comment(comment: str = Form(...), user_id: str = Form(...), commenter_id: str = Form(...), listing_id: str = Form(...)):
     global connection
     try:
         with connection.cursor() as cursor:
