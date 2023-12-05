@@ -261,31 +261,30 @@ async def get_user_ratings(user_email: str):
     
 #Comments
 @app.post("/comments/")
-async def create_comment(comment: str = Form(...), user_id: str = Form(...), commenter_id: str = Form(...), listing_id: str = Form(...)):
+async def create_comment(comment: str = Form(...), commenter_email: str = Form(...), listing_id: UUID = Form(...)):
     global connection
     try:
         with connection.cursor() as cursor:
             insert_query = """
-                INSERT INTO Comments (comment_id, Comment, user_id, commenter_id, listing_id)
-                VALUES (%s, %s, %s, %s, %s);
+                INSERT INTO Comments (comment, commenter_email, listing_id)
+                VALUES (%s, %s, %s);
             """
-            comment_id = str(uuid4())
-            cursor.execute(insert_query, (comment_id, comment, user_id, commenter_id, listing_id))
+            cursor.execute(insert_query, (comment, commenter_email, str(listing_id)))
             connection.commit()
-            return {"comment_id": comment_id, "message": "Comment created successfully"}
+            return {"message": "Comment created successfully"}
     except Exception as e:
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
     
 @app.get("/comments/{listing_id}")
-async def get_comments(listing_id: str):
+async def get_comments(listing_id: UUID):
     global connection
     try:
         with connection.cursor() as cursor:
             select_query = """
                 SELECT * FROM Comments WHERE listing_id = %s;
             """
-            cursor.execute(select_query, (listing_id,))
+            cursor.execute(select_query, (str(listing_id),))
             comments = cursor.fetchall()
 
             formatted_comments = [
@@ -310,36 +309,36 @@ async def update_comment(comment_id: str, new_comment: str = Form(...)):
             """
             cursor.execute(update_query, (new_comment, comment_id))
             connection.commit()
-            return {"comment_id": comment_id, "message": "Comment updated successfully"}
+            return {"message": "Comment updated successfully"}
     except Exception as e:
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/comments/{comment_id}")
-async def delete_comment(comment_id: str):
+async def delete_comment(comment_id: UUID):
     global connection
     try:
         with connection.cursor() as cursor:
             delete_query = """
                 DELETE FROM Comments WHERE comment_id = %s;
             """
-            cursor.execute(delete_query, (comment_id,))
+            cursor.execute(delete_query, (str(comment_id),))
             connection.commit()
-            return {"comment_id": comment_id, "message": "Comment deleted successfully"}
+            return {"message": "Comment deleted successfully"}
     except Exception as e:
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
 #Replies
 @app.get("/comments/{comment_id}/replies")
-async def get_replies(comment_id: str):
+async def get_replies(comment_id: UUID):
     global connection
     try:
         with connection.cursor() as cursor:
             select_query = """
                 SELECT * FROM Replies WHERE comment_id = %s;
             """
-            cursor.execute(select_query, (comment_id,))
+            cursor.execute(select_query, (str(comment_id),))
             replies = cursor.fetchall()
 
         formatted_replies = [
@@ -350,59 +349,56 @@ async def get_replies(comment_id: str):
                 for reply in replies
             ]
         
-        return {"comment_id": comment_id, "replies": formatted_replies}
+        return {"replies": formatted_replies}
     except Exception as e:
         return HTTPException(status_code=500, detail=str(e))
 
 @app.post("/comments/{comment_id}/replies")
-async def add_reply(comment_id: str, user_id: str = Form(...), reply: str = Form(...)):
+async def add_reply(comment_id: UUID, commenter_email: str = Form(...), reply: str = Form(...)):
     global connection
     try:
         with connection.cursor() as cursor:
             insert_query = """
-                INSERT INTO Replies (reply_id, reply, user_id, comment_id)
-                VALUES (%s, %s, %s, %s);
+                INSERT INTO Replies (reply, commenter_email, comment_id)
+                VALUES (%s, %s, %s);
             """
-            reply_id = str(uuid4())
-            cursor.execute(insert_query, (reply_id, reply, user_id, comment_id))
+            cursor.execute(insert_query, (reply, commenter_email, str(comment_id)))
             connection.commit()
-            return {"reply_id": reply_id, "message": "Reply added successfully"}
+            return {"message": "Reply added successfully"}
     except Exception as e:
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
 @app.put("/comments/{comment_id}/replies/{reply_id}")
-async def update_reply(comment_id: str, reply_id: str, new_reply: str = Form(...)):
+async def update_reply(comment_id: UUID, reply_id: UUID, new_reply: str = Form(...)):
     global connection
     try:
         with connection.cursor() as cursor:
             update_query = """
                 UPDATE Replies SET reply = %s WHERE reply_id = %s AND comment_id = %s;
             """
-            cursor.execute(update_query, (new_reply, reply_id, comment_id))
+            cursor.execute(update_query, (new_reply, str(reply_id), str(comment_id)))
             connection.commit()
-            return {"reply_id": reply_id, "message": "Reply updated successfully"}
+            return {"message": "Reply updated successfully"}
     except Exception as e:
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
     
 
 @app.delete("/comments/{comment_id}/replies/{reply_id}")
-async def delete_reply(comment_id: str, reply_id: str):
+async def delete_reply(comment_id: UUID, reply_id: UUID):
     global connection
     try:
         with connection.cursor() as cursor:
             delete_query = """
                 DELETE FROM Replies WHERE reply_id = %s AND comment_id = %s;
             """
-            cursor.execute(delete_query, (reply_id, comment_id))
+            cursor.execute(delete_query, (str(reply_id), str(comment_id)))
             connection.commit()
-            return {"reply_id": reply_id, "message": "Reply deleted successfully"}
+            return {"message": "Reply deleted successfully"}
     except Exception as e:
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
-
-
 
     
 def create_tables():
@@ -424,10 +420,9 @@ def create_tables():
         create_comments_table = """
             CREATE TABLE IF NOT EXISTS Comments (
                 comment_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                Comment TEXT NOT NULL,
-                user_id VARCHAR NOT NULL,
-                commenter_id VARCHAR NOT NULL,
-                listing_id VARCHAR NOT NULL,
+                comment TEXT NOT NULL,
+                commenter_email VARCHAR NOT NULL,
+                listing_id UUID NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """
@@ -440,15 +435,14 @@ def create_tables():
         CREATE TABLE IF NOT EXISTS Replies (
             reply_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
             reply TEXT NOT NULL,
-            user_id VARCHAR NOT NULL,
-            comment_id UUID REFERENCES Comments(comment_id),
+            commenter_email VARCHAR NOT NULL,
+            comment_id UUID REFERENCES Comments(comment_id) ON DELETE CASCADE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """
        
         cursor.execute(create_replies_table)
 
-       
         connection.commit()
         logger.info("Tables created successfully in PostgreSQL database")
     except (Exception, psycopg2.DatabaseError) as error:
