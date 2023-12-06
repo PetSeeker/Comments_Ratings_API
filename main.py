@@ -213,48 +213,40 @@ async def get_user_ratings(user_email: str):
     global connection
     try:
         with connection.cursor() as cursor:
-            query_check_user = "SELECT COUNT(*) FROM ratings WHERE user_email = %s;"
-            cursor.execute(query_check_user, (user_email,))
-            user_exists = cursor.fetchone()[0]
 
-            if user_exists > 0:
-                query = """
-                    SELECT 
-                        AVG(rating) as average_rating, 
-                        COUNT(*) as ratings_count, 
-                        STRING_AGG(DISTINCT CONCAT(rater_email, ':', Rating), ',') as raters,
-                        COUNT(CASE WHEN rating = 1 THEN 1 ELSE NULL END) as count_1_star,
-                        COUNT(CASE WHEN rating = 2 THEN 1 ELSE NULL END) as count_2_stars,
-                        COUNT(CASE WHEN rating = 3 THEN 1 ELSE NULL END) as count_3_stars,
-                        COUNT(CASE WHEN rating = 4 THEN 1 ELSE NULL END) as count_4_stars,
-                        COUNT(CASE WHEN rating = 5 THEN 1 ELSE NULL END) as count_5_stars
-                    FROM ratings 
-                    WHERE user_email = %s;
-                """
-                cursor.execute(query, (user_email,))
-                result_set = cursor.fetchone()
+            query = """
+                SELECT 
+                    AVG(rating) as average_rating, 
+                    COUNT(*) as ratings_count, 
+                    STRING_AGG(DISTINCT CONCAT(rater_email, ':', Rating), ',') as raters,
+                    COUNT(CASE WHEN rating = 1 THEN 1 ELSE NULL END) as count_1_star,
+                    COUNT(CASE WHEN rating = 2 THEN 1 ELSE NULL END) as count_2_stars,
+                    COUNT(CASE WHEN rating = 3 THEN 1 ELSE NULL END) as count_3_stars,
+                    COUNT(CASE WHEN rating = 4 THEN 1 ELSE NULL END) as count_4_stars,
+                    COUNT(CASE WHEN rating = 5 THEN 1 ELSE NULL END) as count_5_stars
+                FROM ratings 
+                WHERE user_email = %s;
+            """
+            cursor.execute(query, (user_email,))
+            result_set = cursor.fetchone()
 
-                if result_set:
-                    average_rating = result_set[0]  
-                    ratings_count = result_set[1]   
-                    raters_str = result_set[2]      
-
-                    raters = [{item.split(':')[0]: int(item.split(':')[1])} for item in raters_str.split(',')] if raters_str else []
-
-                    star_percentages = [round(result_set[i + 3] / ratings_count * 100) if ratings_count != 0 else 0 for i in range(5)]
-
-                    return {
-                        "user_id": user_email,
-                        "average_rating": float(average_rating) if average_rating is not None else None,
-                        "ratings_count": ratings_count,
-                        "raters": raters,
-                        "star_percentages": star_percentages
-                }
-                else:
-                    return HTTPException(status_code=404, detail="User has no ratings")
-            else:
-                return HTTPException(status_code=404, detail="User not found")
             
+            average_rating = result_set[0]  
+            ratings_count = result_set[1]   
+            raters_str = result_set[2]      
+
+            raters = [{item.split(':')[0]: int(item.split(':')[1])} for item in raters_str.split(',')] if raters_str else []
+
+            star_percentages = [round(result_set[i + 3] / ratings_count * 100) if ratings_count != 0 else 0 for i in range(5)]
+
+            return {
+                "user_id": user_email,
+                "average_rating": float(average_rating) if average_rating is not None else None,
+                "ratings_count": ratings_count,
+                "raters": raters,
+                "star_percentages": star_percentages
+            }
+
     except Exception as e:
         logger.error(f"Error retrieving user ratings information: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
