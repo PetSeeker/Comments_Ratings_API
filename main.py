@@ -396,7 +396,14 @@ async def delete_reply(comment_id: UUID, reply_id: UUID):
 def create_tables():
     try:
         global connection,cursor
+        cursor = connection.cursor()
+        drop_comments_table = "DROP TABLE IF EXISTS Comments CASCADE;"
+        drop_replies_table = "DROP TABLE IF EXISTS Replies CASCADE;"
 
+        cursor.execute(drop_replies_table)
+        cursor.execute(drop_comments_table)
+
+        connection.commit()
         create_ratings_table = """
             CREATE TABLE IF NOT EXISTS Ratings (
                 rating_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -406,13 +413,13 @@ def create_tables():
             );
         """
 
-        cursor = connection.cursor()
+        
         cursor.execute(create_ratings_table)
 
         create_comments_table = """
             CREATE TABLE IF NOT EXISTS Comments (
                 comment_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                comment TEXT NOT NULL,
+                comment1 TEXT NOT NULL,
                 commenter_email VARCHAR NOT NULL,
                 listing_id UUID NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
