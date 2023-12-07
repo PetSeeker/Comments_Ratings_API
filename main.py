@@ -419,7 +419,7 @@ def create_tables():
         create_comments_table = """
             CREATE TABLE IF NOT EXISTS Comments (
                 comment_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                comment1 TEXT NOT NULL,
+                comment TEXT NOT NULL,
                 commenter_email VARCHAR NOT NULL,
                 listing_id UUID NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
