@@ -269,27 +269,43 @@ async def create_comment(comment: str = Form(...), commenter_email: str = Form(.
         return HTTPException(status_code=500, detail=str(e))
     
 @app.get("/comments/{listing_id}")
-async def get_comments(listing_id: UUID):
+async def get_comments_and_replies(listing_id: UUID):
     global connection
     try:
         with connection.cursor() as cursor:
+
+            listing_data = []
             select_query = """
                 SELECT * FROM Comments WHERE listing_id = %s;
             """
             cursor.execute(select_query, (str(listing_id),))
             comments = cursor.fetchall()
-
-            formatted_comments = [
-                {
+            for comment in comments:
+                comment_id = comment[0]
+                select_query = """
+                    SELECT * FROM Replies WHERE comment_id = %s;
+                """
+                cursor.execute(select_query, (str(comment_id),))
+                replies = cursor.fetchall()
+                listing_data.append({
                     "comment_id": comment[0],
                     "comment": comment[1],
-                }
-                for comment in comments
-            ]
-
-            return {"listing_id": listing_id, "comments": formatted_comments}
+                    "commenter_email": comment[2],
+                    "created_at": comment[4],
+                    "replies": [
+                        {
+                            "reply_id": reply[0],
+                            "reply": reply[1],
+                            "commenter_email": reply[2],
+                            "created_at": reply[4]
+                        }
+                        for reply in replies
+                    ]
+                })
+            return {"listing_data": listing_data}
     except Exception as e:
         return HTTPException(status_code=500, detail=str(e))
+    
     
 @app.put("/comments/{comment_id}")
 async def update_comment(comment_id: str, new_comment: str = Form(...)):
@@ -321,29 +337,6 @@ async def delete_comment(comment_id: UUID):
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
-#Replies
-@app.get("/comments/{comment_id}/replies")
-async def get_replies(comment_id: UUID):
-    global connection
-    try:
-        with connection.cursor() as cursor:
-            select_query = """
-                SELECT * FROM Replies WHERE comment_id = %s;
-            """
-            cursor.execute(select_query, (str(comment_id),))
-            replies = cursor.fetchall()
-
-        formatted_replies = [
-                {
-                    "reply_id": reply[0],
-                    "reply": reply[1],
-                }
-                for reply in replies
-            ]
-        
-        return {"replies": formatted_replies}
-    except Exception as e:
-        return HTTPException(status_code=500, detail=str(e))
 
 @app.post("/comments/{comment_id}/replies")
 async def add_reply(comment_id: UUID, commenter_email: str = Form(...), reply: str = Form(...)):
