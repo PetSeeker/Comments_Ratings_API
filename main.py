@@ -61,7 +61,7 @@ async def health():
 
 
 #Ratings
-@app.post("/ratings/")
+@app.post("/ratings/",  tags=["Ratings"])
 async def create_rating(
     user_email: str = Form(...), 
     rater_email: str = Form(...), 
@@ -96,7 +96,7 @@ async def create_rating(
         logger.error(f"Error creating rating: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
     
-@app.get("/ratings/")
+@app.get("/ratings/",  tags=["Ratings"])
 async def get_rating_id(user_email: str, rater_email: str):
     global connection
     try:
@@ -117,7 +117,7 @@ async def get_rating_id(user_email: str, rater_email: str):
         logger.error(f"Error retrieving rating ID: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
     
-@app.delete("/ratings/{rating_id}")
+@app.delete("/ratings/{rating_id}",  tags=["Ratings"])
 async def delete_rating(rating_id: UUID):
     global connection
     try:
@@ -138,7 +138,7 @@ async def delete_rating(rating_id: UUID):
         return HTTPException(status_code=500, detail="Internal Server Error")
     
 
-@app.put("/ratings/{rating_id}")
+@app.put("/ratings/{rating_id}",  tags=["Ratings"])
 async def update_rating(
     rating_id: UUID, 
     rating: int = Form(...)
@@ -164,7 +164,7 @@ async def update_rating(
         logger.error(f"Error updating rating: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
     
-@app.get("/ratings/{rating_id}")
+@app.get("/ratings/{rating_id}",  tags=["Ratings"])
 async def get_rating(rating_id: UUID):
     global connection
     try:
@@ -186,7 +186,7 @@ async def get_rating(rating_id: UUID):
         logger.error(f"Error retrieving rating: {str(e)}")
         return HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.get("/ratings/user/")
+@app.get("/ratings/user/",  tags=["Ratings"])
 async def get_ratings_order_by_user():
     global connection
     try:
@@ -208,7 +208,7 @@ async def get_ratings_order_by_user():
         logger.error(f"Error retrieving ratings: {e}")
         return HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.get("/ratings/user/{user_email}")
+@app.get("/ratings/user/{user_email}",  tags=["Ratings"])
 async def get_user_ratings(user_email: str):
     global connection
     try:
@@ -252,7 +252,7 @@ async def get_user_ratings(user_email: str):
         return HTTPException(status_code=500, detail="Internal Server Error")
     
 #Comments
-@app.post("/comments/")
+@app.post("/comments/",  tags=["Comments"])
 async def create_comment(comment: str = Form(...), commenter_email: str = Form(...), listing_id: UUID = Form(...)):
     global connection
     try:
@@ -268,7 +268,7 @@ async def create_comment(comment: str = Form(...), commenter_email: str = Form(.
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
     
-@app.get("/comments/{listing_id}")
+@app.get("/comments/{listing_id}",  tags=["Comments"])
 async def get_comments_and_replies(listing_id: UUID):
     global connection
     try:
@@ -307,7 +307,7 @@ async def get_comments_and_replies(listing_id: UUID):
         return HTTPException(status_code=500, detail=str(e))
     
     
-@app.put("/comments/{comment_id}")
+@app.put("/comments/{comment_id}",  tags=["Comments"])
 async def update_comment(comment_id: str, new_comment: str = Form(...)):
     global connection
     try:
@@ -322,7 +322,7 @@ async def update_comment(comment_id: str, new_comment: str = Form(...)):
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/comments/{comment_id}")
+@app.delete("/comments/{comment_id}",  tags=["Comments"])
 async def delete_comment(comment_id: UUID):
     global connection
     try:
@@ -338,7 +338,7 @@ async def delete_comment(comment_id: UUID):
         return HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/comments/{comment_id}/replies")
+@app.post("/comments/{comment_id}/replies",  tags=["Replies"])
 async def add_reply(comment_id: UUID, commenter_email: str = Form(...), reply: str = Form(...)):
     global connection
     try:
@@ -354,7 +354,7 @@ async def add_reply(comment_id: UUID, commenter_email: str = Form(...), reply: s
         connection.rollback()
         return HTTPException(status_code=500, detail=str(e))
 
-@app.put("/comments/{comment_id}/replies/{reply_id}")
+@app.put("/comments/{comment_id}/replies/{reply_id}",  tags=["Replies"])
 async def update_reply(comment_id: UUID, reply_id: UUID, new_reply: str = Form(...)):
     global connection
     try:
@@ -370,7 +370,7 @@ async def update_reply(comment_id: UUID, reply_id: UUID, new_reply: str = Form(.
         return HTTPException(status_code=500, detail=str(e))
     
 
-@app.delete("/comments/{comment_id}/replies/{reply_id}")
+@app.delete("/comments/{comment_id}/replies/{reply_id}",  tags=["Replies"])
 async def delete_reply(comment_id: UUID, reply_id: UUID):
     global connection
     try:
