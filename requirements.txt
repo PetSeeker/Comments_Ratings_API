@@ -3,3 +3,7 @@ uvicorn
 fastapi
 python-dotenv
 python-multipart
+pytest-mock
+pytest
+httpx
+pytest-cov

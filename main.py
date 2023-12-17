@@ -57,7 +57,7 @@ def connect_db():
 
 @app.get("/health/")
 async def health():
-    return HTTPException(status_code=200, detail="Server is healthy")
+    return {"status": "Server is healthy"}
 
 
 #Ratings
@@ -70,7 +70,7 @@ async def create_rating(
     global connection
     try:
         with connection.cursor() as cursor:
-            
+            print(user_email, rater_email, rating)
             if not 1 <= rating <= 5:
                 return HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
 
@@ -81,6 +81,7 @@ async def create_rating(
             existing_rating = cursor.fetchone()
 
             if existing_rating:
+                print(existing_rating)
                 return HTTPException(status_code=400, detail="Rating for the same user already exists.")
 
             insert_query = """
@@ -162,7 +163,7 @@ async def update_rating(
     except Exception as e:
         connection.rollback()
         logger.error(f"Error updating rating: {e}")
-        return HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
     
 @app.get("/ratings/{rating_id}",  tags=["Ratings"])
 async def get_rating(rating_id: UUID):
@@ -176,10 +177,11 @@ async def get_rating(rating_id: UUID):
 
             if result is None:
                 return HTTPException(status_code=404, detail="Rating not found")
-  
             else:
                 rating = result[0]
                 return {"rating": rating}
+            
+
 
     except Exception as e:
         connection.rollback()
