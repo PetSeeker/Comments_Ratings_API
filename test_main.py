@@ -10,6 +10,7 @@ import main
 def test_client():
     return TestClient(app)
 
+
 @pytest.fixture
 def mock_db_connection():
     with patch('main.psycopg2.connect') as mock_connect:
